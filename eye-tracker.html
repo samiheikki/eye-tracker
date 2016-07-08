@@ -1,0 +1,127 @@
+<link rel="import" href="../polymer/polymer.html">
+<script src="src/webgazer.js"></script>
+
+<!--
+`eye-tracker`
+todo description here
+
+@demo demo/index.html
+-->
+
+<dom-module id="eye-tracker">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+      .video {
+        width: 320px;
+        height: 240px;
+        @apply(--eye-tracker-video);
+      }
+    </style>
+    <h2>Hello [[prop1]]</h2>
+  </template>
+
+  <script>
+    Polymer({
+
+      is: 'eye-tracker',
+
+      properties: {
+        autobegin: {
+          type: Boolean,
+          value: true
+        },
+        showPredictionPoints: {
+          type: Boolean,
+          value: true
+        },
+        showVideo: {
+          type: Boolean,
+          value: true
+        },
+        _webgazer: {
+          type: Object,
+          value: function() {
+            return webgazer;
+          }
+        }
+      },
+
+      attached: function() {
+      },
+
+      ready: function() {
+        if (this.autobegin) {
+          this.begin();
+        }
+      },
+
+      begin: function() {
+        this._webgazer.setRegression('ridge') /* currently must set regression and tracker */
+        .setTracker('clmtrackr')
+        .setGazeListener(function(data, clock) {
+         //   console.log(data); /* data is an object containing an x and y key which are the x and y prediction coordinates (no bounds limiting) */
+         //   console.log(clock); /* elapsed time in milliseconds since webgazer.begin() was called */
+        })
+        .begin()
+        .showPredictionPoints(true); /* shows a square every 100 milliseconds where current prediction is */
+        this._setup();
+      },
+
+      _setup: function() {
+
+
+        var width = 320;
+        var height = 240;
+        var topDist = '0px';
+        var leftDist = '0px';
+
+
+        if (this._webgazer && this._webgazer.isReady()) {
+          var video = document.getElementById('webgazerVideoFeed');
+          video.style.display = 'block';
+          video.style.position = 'absolute';
+          video.style.top = topDist;
+          video.style.left = leftDist;
+          video.width = width;
+          video.height = height;
+          video.style.margin = '0px';
+
+
+          var clonedVideo = video.cloneNode(true);
+          console.log(clonedVideo);
+
+          webgazer.params.imgWidth = width;
+          webgazer.params.imgHeight = height;
+
+          var overlay = document.createElement('canvas');
+          overlay.id = 'overlay';
+          overlay.style.position = 'absolute';
+          overlay.width = width;
+          overlay.height = height;
+          overlay.style.top = topDist;
+          overlay.style.left = leftDist;
+          overlay.style.margin = '0px';
+
+          document.body.appendChild(overlay);
+
+          var cl = webgazer.getTracker().clm;
+
+          var drawLoop = function() {
+              requestAnimFrame(drawLoop);
+              overlay.getContext('2d').clearRect(0,0,width,height);
+              if (cl.getCurrentPosition()) {
+                  cl.draw(overlay);
+              }
+          }
+          drawLoop();
+        } else {
+            this.async(this._setup, 100);
+        }
+      }
+
+    });
+  </script>
+</dom-module>
