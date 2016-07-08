@@ -10354,16 +10354,20 @@ if (typeof exports !== 'undefined') {
         videoElement.id = webgazer.params.videoElementId;
         videoElement.autoplay = true;
         console.log(videoElement);
-        videoElement.style.display = 'none';
+        videoElement.style.display = 'block'; // change
 
         //turn the stream into a magic URL
         videoElement.src = videoSrc;
-        document.body.appendChild(videoElement);
+
+        //document.body.appendChild(videoElement); // change
+        window.webgazerVideoElement = videoElement;
 
         videoElementCanvas = document.createElement('canvas');
         videoElementCanvas.id = webgazer.params.videoElementCanvasId;
         videoElementCanvas.style.display = 'none';
-        document.body.appendChild(videoElementCanvas);
+
+        //document.body.appendChild(videoElementCanvas); // change
+        window.videoElementCanvas = videoElementCanvas;
 
 
         //third argument set to true so that we get event on 'capture' instead of 'bubbling'
@@ -10466,8 +10470,8 @@ if (typeof exports !== 'undefined') {
         //loop may run an extra time and fail due to removed elements
         paused = true;
         //remove video element and canvas
-        document.body.removeChild(videoElement);
-        document.body.removeChild(videoElementCanvas);
+        //document.body.removeChild(videoElement); //change
+        //document.body.removeChild(videoElementCanvas); //change
 
         setGlobalData();
         return webgazer;

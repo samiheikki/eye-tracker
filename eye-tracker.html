@@ -3,7 +3,7 @@
 
 <!--
 `eye-tracker`
-todo description here
+Web Component wrapper for webgazer.js eye tracking software
 
 @demo demo/index.html
 -->
@@ -14,13 +14,13 @@ todo description here
       :host {
         display: block;
       }
+
       .video {
         width: 320px;
         height: 240px;
         @apply(--eye-tracker-video);
       }
     </style>
-    <h2>Hello [[prop1]]</h2>
   </template>
 
   <script>
@@ -29,98 +29,170 @@ todo description here
       is: 'eye-tracker',
 
       properties: {
+        /*
+        Begin eye tracking automatically
+        */
         autobegin: {
           type: Boolean,
           value: true
         },
+        /*
+        Show red point at position of sight
+        */
         showPredictionPoints: {
           type: Boolean,
-          value: true
+          value: false,
+          observer: '_showPredictionPointsObserver'
         },
+        /*
+        Show webcam view of user
+        */
         showVideo: {
           type: Boolean,
-          value: true
+          value: false,
+          observer: '_showVideoObserver'
         },
         _webgazer: {
           type: Object,
-          value: function() {
-            return webgazer;
-          }
-        }
-      },
+          value: webgazer
+        },
+        _webgazerVideo: {
 
-      attached: function() {
+        },
+        _webgazerCanvas: {
+
+        },
+        /*
+        Position of sight: x, y, time
+        */
+        position: {
+          type: Object,
+          value: function() {
+            return {
+              x: null,
+              y: null,
+              time: null
+            };
+          },
+          notify: true
+        },
+        _started: {
+          type: Boolean,
+          value: false
+        }
       },
 
       ready: function() {
         if (this.autobegin) {
-          this.begin();
+          this.start();
         }
       },
 
-      begin: function() {
+      /*
+      Start eye tracking. Note, autobegin is true by default
+      */
+      start: function() {
+        if (this._started) {
+          return;
+        }
+        this._started = true;
         this._webgazer.setRegression('ridge') /* currently must set regression and tracker */
-        .setTracker('clmtrackr')
-        .setGazeListener(function(data, clock) {
-         //   console.log(data); /* data is an object containing an x and y key which are the x and y prediction coordinates (no bounds limiting) */
-         //   console.log(clock); /* elapsed time in milliseconds since webgazer.begin() was called */
-        })
-        .begin()
-        .showPredictionPoints(true); /* shows a square every 100 milliseconds where current prediction is */
+          .setTracker('clmtrackr')
+          .setGazeListener(function(data, clock) {
+            if (data && clock) {
+              this.position = {
+                x: data.x,
+                y: data.y,
+                time: clock
+              };
+            }
+          }.bind(this))
+          .begin();
+        if (this.showPredictionPoints) {
+          this._webgazer.showPredictionPoints(true);
+        }
         this._setup();
+      },
+
+      /*
+      Stop eye tracking
+      */
+      end: function() {
+        if (!this._started) {
+          return;
+        }
+        this._started = false;
+        this._webgazer.end();
+        Polymer.dom(this.root).removeChild(Polymer.dom(this.root).querySelector('#webgazerVideoFeed'));
+        Polymer.dom(this.root).removeChild(Polymer.dom(this.root).querySelector('#overlay'));
       },
 
       _setup: function() {
 
-
-        var width = 320;
-        var height = 240;
-        var topDist = '0px';
-        var leftDist = '0px';
-
-
         if (this._webgazer && this._webgazer.isReady()) {
-          var video = document.getElementById('webgazerVideoFeed');
-          video.style.display = 'block';
-          video.style.position = 'absolute';
-          video.style.top = topDist;
-          video.style.left = leftDist;
-          video.width = width;
-          video.height = height;
-          video.style.margin = '0px';
+          window.webgazerVideoElement.className = 'video';
 
-
-          var clonedVideo = video.cloneNode(true);
-          console.log(clonedVideo);
-
-          webgazer.params.imgWidth = width;
-          webgazer.params.imgHeight = height;
-
-          var overlay = document.createElement('canvas');
-          overlay.id = 'overlay';
-          overlay.style.position = 'absolute';
-          overlay.width = width;
-          overlay.height = height;
-          overlay.style.top = topDist;
-          overlay.style.left = leftDist;
-          overlay.style.margin = '0px';
-
-          document.body.appendChild(overlay);
-
-          var cl = webgazer.getTracker().clm;
-
-          var drawLoop = function() {
-              requestAnimFrame(drawLoop);
-              overlay.getContext('2d').clearRect(0,0,width,height);
-              if (cl.getCurrentPosition()) {
-                  cl.draw(overlay);
-              }
+          if (!Polymer.dom(this.root).querySelector('#webgazerVideoFeed')) {
+            Polymer.dom(this.root).appendChild(window.webgazerVideoElement);
           }
-          drawLoop();
+
+          this.async(function() {
+            this._webgazerVideo = Polymer.dom(this.root).querySelector('#webgazerVideoFeed');
+
+            var width = this._webgazerVideo.offsetWidth;
+            var height = this._webgazerVideo.offsetHeight;
+            this._webgazer.params.imgWidth = width;
+            this._webgazer.params.imgHeight = height;
+
+
+            var overlay = document.createElement('canvas');
+            overlay.id = 'overlay';
+            overlay.style.position = 'absolute';
+            overlay.width = width;
+            overlay.height = height;
+            overlay.style.margin = '0px';
+
+            Polymer.dom(this.root).insertBefore(overlay, this._webgazerVideo);
+
+            this.async(function() {
+              this._webgazerCanvas = Polymer.dom(this.root).querySelector('#overlay');
+
+              if (!this.showVideo) {
+                this._webgazerCanvas.hidden = true;
+                this._webgazerVideo.hidden = true;
+              }
+            });
+
+
+            var cl = this._webgazer.getTracker().clm;
+
+            var drawLoop = function() {
+              requestAnimFrame(drawLoop);
+              overlay.getContext('2d').clearRect(0, 0, width, height);
+              if (cl.getCurrentPosition()) {
+                cl.draw(overlay);
+              }
+            }
+            drawLoop();
+          });
         } else {
-            this.async(this._setup, 100);
+          this.async(this._setup, 100);
+        }
+      },
+
+      _showVideoObserver: function(value) {
+        if (this._webgazerCanvas && this._webgazerVideo) {
+          this._webgazerCanvas.hidden = !value;
+          this._webgazerVideo.hidden = !value;
+        }
+      },
+
+      _showPredictionPointsObserver: function(value) {
+        if (this._webgazer) {
+          this._webgazer.showPredictionPoints(value);
         }
       }
+
 
     });
   </script>

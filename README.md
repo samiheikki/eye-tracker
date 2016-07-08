@@ -1,38 +1,28 @@
-# \<eye-tracker\>
+eye-tracker
+===============
 
-todo description here
+![Screenshot](https://github.com/samiheikki/eye-tracker/raw/master/demo.PNG)
 
-## Install the Polymer-CLI
+eye-tracker is a Web Component wrapper for [webgazer.js](https://webgazer.cs.brown.edu/) eye tracking software
 
-First, make sure you have the [Polymer CLI](https://www.npmjs.com/package/polymer-cli) installed. Then run `polymer serve` to serve your application locally.
+See a [live demo](http://samiheikki.github.io/eye-tracker/).
 
-## Viewing Your Application
+## Getting Started
 
-```
-$ polymer serve
-```
-
-## Building Your Application
-
-```
-$ polymer build
+### Installation
+```bash
+bower install eye-tracker --save
 ```
 
-This will create a `build/` folder with `bundled/` and `unbundled/` sub-folders
-containing a bundled (Vulcanized) and unbundled builds, both run through HTML,
-CSS, and JS optimizers.
-
-You can serve the built versions by giving `polymer serve` a folder to serve
-from:
+### Usage
+```html
+<eye-tracker></eye-tracker>
 
 ```
-$ polymer serve build/bundled
-```
 
-## Running Tests
+### Development
+Use ```polymer serve``` during development as instructed in [Create a reusable element](https://www.polymer-project.org/1.0/docs/tools/reusable-elements) article.
 
-```
-$ polymer test
-```
 
-Your application is already set up to be tested via [web-component-tester](https://github.com/Polymer/web-component-tester). Run `polymer test` to run your application's test suite locally.
+### License
+Licensed under GPLv3.
