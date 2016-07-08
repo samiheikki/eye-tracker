@@ -1,0 +1,199 @@
+<link rel="import" href="../polymer/polymer.html">
+<script src="src/webgazer.js"></script>
+
+<!--
+`eye-tracker`
+Web Component wrapper for webgazer.js eye tracking software
+
+@demo demo/index.html
+-->
+
+<dom-module id="eye-tracker">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+
+      .video {
+        width: 320px;
+        height: 240px;
+        @apply(--eye-tracker-video);
+      }
+    </style>
+  </template>
+
+  <script>
+    Polymer({
+
+      is: 'eye-tracker',
+
+      properties: {
+        /*
+        Begin eye tracking automatically
+        */
+        autobegin: {
+          type: Boolean,
+          value: true
+        },
+        /*
+        Show red point at position of sight
+        */
+        showPredictionPoints: {
+          type: Boolean,
+          value: false,
+          observer: '_showPredictionPointsObserver'
+        },
+        /*
+        Show webcam view of user
+        */
+        showVideo: {
+          type: Boolean,
+          value: false,
+          observer: '_showVideoObserver'
+        },
+        _webgazer: {
+          type: Object,
+          value: webgazer
+        },
+        _webgazerVideo: {
+
+        },
+        _webgazerCanvas: {
+
+        },
+        /*
+        Position of sight: x, y, time
+        */
+        position: {
+          type: Object,
+          value: function() {
+            return {
+              x: null,
+              y: null,
+              time: null
+            };
+          },
+          notify: true
+        },
+        _started: {
+          type: Boolean,
+          value: false
+        }
+      },
+
+      ready: function() {
+        if (this.autobegin) {
+          this.start();
+        }
+      },
+
+      /*
+      Start eye tracking. Note, autobegin is true by default
+      */
+      start: function() {
+        if (this._started) {
+          return;
+        }
+        this._started = true;
+        this._webgazer.setRegression('ridge') /* currently must set regression and tracker */
+          .setTracker('clmtrackr')
+          .setGazeListener(function(data, clock) {
+            if (data && clock) {
+              this.position = {
+                x: data.x,
+                y: data.y,
+                time: clock
+              };
+            }
+          }.bind(this))
+          .begin();
+        if (this.showPredictionPoints) {
+          this._webgazer.showPredictionPoints(true);
+        }
+        this._setup();
+      },
+
+      /*
+      Stop eye tracking
+      */
+      end: function() {
+        if (!this._started) {
+          return;
+        }
+        this._started = false;
+        this._webgazer.end();
+        Polymer.dom(this.root).removeChild(Polymer.dom(this.root).querySelector('#webgazerVideoFeed'));
+        Polymer.dom(this.root).removeChild(Polymer.dom(this.root).querySelector('#overlay'));
+      },
+
+      _setup: function() {
+
+        if (this._webgazer && this._webgazer.isReady()) {
+          window.webgazerVideoElement.className = 'video';
+
+          if (!Polymer.dom(this.root).querySelector('#webgazerVideoFeed')) {
+            Polymer.dom(this.root).appendChild(window.webgazerVideoElement);
+          }
+
+          this.async(function() {
+            this._webgazerVideo = Polymer.dom(this.root).querySelector('#webgazerVideoFeed');
+
+            var width = this._webgazerVideo.offsetWidth;
+            var height = this._webgazerVideo.offsetHeight;
+            this._webgazer.params.imgWidth = width;
+            this._webgazer.params.imgHeight = height;
+
+
+            var overlay = document.createElement('canvas');
+            overlay.id = 'overlay';
+            overlay.style.position = 'absolute';
+            overlay.width = width;
+            overlay.height = height;
+            overlay.style.margin = '0px';
+
+            Polymer.dom(this.root).insertBefore(overlay, this._webgazerVideo);
+
+            this.async(function() {
+              this._webgazerCanvas = Polymer.dom(this.root).querySelector('#overlay');
+
+              if (!this.showVideo) {
+                this._webgazerCanvas.hidden = true;
+                this._webgazerVideo.hidden = true;
+              }
+            });
+
+
+            var cl = this._webgazer.getTracker().clm;
+
+            var drawLoop = function() {
+              requestAnimFrame(drawLoop);
+              overlay.getContext('2d').clearRect(0, 0, width, height);
+              if (cl.getCurrentPosition()) {
+                cl.draw(overlay);
+              }
+            }
+            drawLoop();
+          });
+        } else {
+          this.async(this._setup, 100);
+        }
+      },
+
+      _showVideoObserver: function(value) {
+        if (this._webgazerCanvas && this._webgazerVideo) {
+          this._webgazerCanvas.hidden = !value;
+          this._webgazerVideo.hidden = !value;
+        }
+      },
+
+      _showPredictionPointsObserver: function(value) {
+        if (this._webgazer) {
+          this._webgazer.showPredictionPoints(value);
+        }
+      }
+
+
+    });
+  </script>
+</dom-module>
